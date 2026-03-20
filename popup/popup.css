@@ -276,12 +276,74 @@ html, body {
   transform: translateY(0);
 }
 
+/* ===== Compact Button Row ===== */
+.compact-btn-row {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+/* Add more button (blue dashed) */
+.compact-add-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--gray-1);
+  color: var(--blue);
+  border: 1.5px dashed var(--blue);
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.compact-add-btn:hover {
+  background: var(--blue-light);
+  border-style: solid;
+}
+
+/* Replace button (gray outlined) */
+.compact-replace-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--gray-1);
+  color: var(--gray-5);
+  border: 1.5px solid var(--gray-3);
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.compact-replace-btn:hover {
+  background: var(--gray-2);
+  border-color: var(--gray-4);
+  color: var(--text-primary);
+}
+
+/* Full-width replace (pdf2img only has one button) */
+.compact-replace-btn--full {
+  flex: none;
+  width: 100%;
+}
+
 /* ===== File List ===== */
 .file-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 140px;
+  max-height: 200px;
   overflow-y: auto;
 }
 
@@ -639,11 +701,37 @@ html, body {
   100% { background-position: 200% 0; }
 }
 
+.progress-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
 .progress-text {
   font-size: 11px;
   color: var(--text-secondary);
-  margin-top: 6px;
-  text-align: center;
+  flex: 1;
+}
+
+.cancel-btn {
+  padding: 3px 10px;
+  border: 1px solid var(--red);
+  background: transparent;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: var(--red);
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cancel-btn:hover {
+  background: var(--red);
+  color: white;
 }
 
 /* ===== Result Area ===== */
@@ -1178,6 +1266,7 @@ html, body {
 
 /* Math image preview */
 .math-preview-wrap {
+  position: relative;
   border-radius: var(--radius-sm);
   overflow: hidden;
   border: 1px solid var(--border);
@@ -1194,6 +1283,33 @@ html, body {
   max-height: 144px;
   object-fit: contain;
   display: block;
+}
+
+/* Remove button on math image preview */
+.math-img-remove {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: rgba(28, 28, 30, 0.65);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+  line-height: 1;
+  transition: all var(--transition);
+  backdrop-filter: blur(4px);
+  z-index: 2;
+}
+
+.math-img-remove:hover {
+  background: var(--red);
+  transform: scale(1.1);
 }
 
 /* Math recognize button */

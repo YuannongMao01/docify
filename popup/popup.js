@@ -5,6 +5,8 @@ const MATH_API = 'http://localhost:8765';
 const I18N = {
   en: {
     tab_img2pdf:'Img→PDF', tab_pdf2img:'PDF→Img', tab_merge:'Merge', tab_math:'Math OCR',
+    btn_add_more:'+ Add more', btn_replace_file:'↺ Replace file', btn_replace_all:'↺ Replace all',
+    // (symbols are part of the text, no SVG icons needed)
     drop_img_title:'Drop images here', drop_img_sub:'JPG, PNG, JPEG — single or batch',
     drop_pdf_title:'Drop PDF here', drop_pdf2img_sub:'Each page exported as image',
     drop_merge_title:'Drop multiple PDFs here', drop_merge_sub:'Drag to reorder before merging',
@@ -51,6 +53,8 @@ const I18N = {
   },
   zh: {
     tab_img2pdf:'图片→PDF', tab_pdf2img:'PDF→图片', tab_merge:'合并PDF', tab_math:'公式识别',
+    btn_add_more:'+ 继续添加', btn_replace_file:'↺ 替换文件', btn_replace_all:'↺ 全部替换',
+    // (symbols are part of the text, no SVG icons needed)
     drop_img_title:'拖拽图片到此处', drop_img_sub:'支持 JPG、PNG、JPEG，可多选',
     drop_pdf_title:'拖拽 PDF 到此处', drop_pdf2img_sub:'每页将导出为独立图片',
     drop_merge_title:'拖拽多个 PDF 到此处', drop_merge_sub:'按列表顺序合并，可拖拽排序',
@@ -105,6 +109,7 @@ const state = {
   merge:   { files: [] },
   currentTab: 'img2pdf',
   outputBlobs: [],
+  cancelController: null,  // AbortController for current operation
 };
 
 const t   = key => (I18N[state.lang][key] || I18N.en[key] || key);
@@ -119,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initFileInputs();
   initConvertButtons();
   initDownloadBtn();
+  initCancelBtn();
   initMathOCR();
   applyI18n();
 });
@@ -183,12 +189,38 @@ function initDropZones() {
 // ─── File Inputs ──────────────────────────────────────────────
 function initFileInputs() {
   ['img2pdf','pdf2img','merge'].forEach(tab => {
-    const input = $(`fileInput-${tab}`);
-    const btn   = $(`selectBtn-${tab}`);
+    const input      = $(`fileInput-${tab}`);
+    const btn        = $(`selectBtn-${tab}`);
+    const addBtn     = $(`compactAddBtn-${tab}`);     // "Add more" (img2pdf, merge only)
+    const replaceBtn = $(`compactReplaceBtn-${tab}`); // "Replace" (all three tabs)
     if (!input || !btn) return;
+
     btn.addEventListener('click', e => { e.stopPropagation(); input.click(); });
     input.addEventListener('change', () => { addFiles(tab, Array.from(input.files)); input.value = ''; });
+
+    // "Add more" — append files (img2pdf & merge)
+    if (addBtn) addBtn.addEventListener('click', () => input.click());
+
+    // "Replace" — clear existing files and restore drop zone (user re-uploads manually)
+    if (replaceBtn) {
+      replaceBtn.addEventListener('click', () => {
+        state[tab].files = [];
+        renderFileList(tab);
+        updateConvertBtn(tab);
+        updateDropZoneVisibility(tab);
+      });
+    }
   });
+}
+
+// ─── Toggle Drop Zone visibility ──────────────────────────────
+function updateDropZoneVisibility(tab) {
+  const zone    = $(`dropZone-${tab}`);
+  const btnRow  = $(`compactBtnRow-${tab}`);
+  if (!zone || !btnRow) return;
+  const hasFiles = state[tab].files.length > 0;
+  zone.style.display   = hasFiles ? 'none' : '';
+  btnRow.style.display = hasFiles ? 'flex' : 'none';
 }
 
 // ─── Add Files ────────────────────────────────────────────────
@@ -202,13 +234,10 @@ function addFiles(tab, newFiles) {
     if (!allowed[tab].includes(f.type)) { showToast(t('toast_unsupported') + ': ' + f.name, 'error'); return false; }
     return true;
   });
-  if (tab === 'pdf2img') {
-    state[tab].files = filtered.slice(0, 1);
-  } else {
-    state[tab].files.push(...filtered);
-  }
+  state[tab].files.push(...filtered);
   renderFileList(tab);
   updateConvertBtn(tab);
+  updateDropZoneVisibility(tab);
 }
 
 function renderFileList(tab) {
@@ -247,6 +276,7 @@ function renderFileList(tab) {
       state[tab].files.splice(parseInt(btn.dataset.idx), 1);
       renderFileList(tab);
       updateConvertBtn(tab);
+      updateDropZoneVisibility(tab);
     });
   });
 
@@ -496,6 +526,26 @@ function hideResult() {
   state.outputBlobs = [];
 }
 
+// ─── Cancel Button ────────────────────────────────────────────
+function initCancelBtn() {
+  $('cancelBtn').addEventListener('click', () => {
+    if (state.cancelController) {
+      state.cancelController.abort();
+      state.cancelController = null;
+    }
+    hideProgress();
+    // Re-enable the convert button but keep files intact
+    const tab = state.currentTab;
+    const btnId = `convertBtn-${tab}`;
+    const btn = $(btnId);
+    if (btn) {
+      btn.classList.remove('loading');
+      btn.disabled = state[tab]?.files.length === 0;
+    }
+    showToast(state.lang === 'zh' ? '已取消' : 'Cancelled');
+  });
+}
+
 // ─── Button Loading ───────────────────────────────────────────
 function setLoading(btnId, loading) {
   const btn = $(btnId);
@@ -571,6 +621,18 @@ function initMathOCR() {
     const file = e.target.files[0];
     if (file) loadMathImage(file);
     e.target.value = '';
+  });
+
+  // ── Remove image button ──────────────────────────────────
+  $('mathImgRemove').addEventListener('click', () => {
+    mathImageDataUrl = null;
+    $('mathPreviewImg').src = '';
+    $('mathPreviewWrap').style.display = 'none';
+    $('recognizeBtn').disabled = true;
+    $('latexResult').style.display = 'none';
+    $('fileInput-math').value = '';
+    // Restore drop zone
+    $('dropZone-math').style.display = '';
   });
 
   // ── Recognize button ─────────────────────────────────────
@@ -673,6 +735,8 @@ function loadMathImage(file) {
     $('mathPreviewWrap').style.display = 'flex';
     $('recognizeBtn').disabled = false;
     $('latexResult').style.display = 'none';
+    // Hide drop zone once image is loaded
+    $('dropZone-math').style.display = 'none';
   };
   reader.readAsDataURL(file);
 }

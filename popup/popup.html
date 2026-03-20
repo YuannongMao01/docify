@@ -79,6 +79,14 @@
           <button class="select-btn" id="selectBtn-img2pdf" data-i18n="btn_select_files">Select Files</button>
           <input type="file" id="fileInput-img2pdf" accept=".jpg,.jpeg,.png" multiple hidden />
         </div>
+        <div class="compact-btn-row" id="compactBtnRow-img2pdf" style="display:none">
+          <button class="compact-add-btn" id="compactAddBtn-img2pdf">
+            <span data-i18n="btn_add_more">+ Add more</span>
+          </button>
+          <button class="compact-replace-btn" id="compactReplaceBtn-img2pdf">
+            <span data-i18n="btn_replace_all">↺ Replace all</span>
+          </button>
+        </div>
         <div class="file-list" id="fileList-img2pdf"></div>
         <div class="options-row">
           <label class="option-label" data-i18n="label_page_size">Page Size</label>
@@ -110,7 +118,15 @@
           <p class="drop-title" data-i18n="drop_pdf_title">Drop PDF here</p>
           <p class="drop-subtitle" data-i18n="drop_pdf2img_sub">Each page exported as image</p>
           <button class="select-btn" id="selectBtn-pdf2img" data-i18n="btn_select_pdf">Select PDF</button>
-          <input type="file" id="fileInput-pdf2img" accept=".pdf" hidden />
+          <input type="file" id="fileInput-pdf2img" accept=".pdf" multiple hidden />
+        </div>
+        <div class="compact-btn-row" id="compactBtnRow-pdf2img" style="display:none">
+          <button class="compact-add-btn" id="compactAddBtn-pdf2img">
+            <span data-i18n="btn_add_more">+ Add more</span>
+          </button>
+          <button class="compact-replace-btn" id="compactReplaceBtn-pdf2img">
+            <span data-i18n="btn_replace_all">↺ Replace all</span>
+          </button>
         </div>
         <div class="file-list" id="fileList-pdf2img"></div>
         <div class="options-row">
@@ -151,6 +167,14 @@
           <p class="drop-subtitle" data-i18n="drop_merge_sub">Drag to reorder before merging</p>
           <button class="select-btn" id="selectBtn-merge" data-i18n="btn_select_pdfs">Select PDFs</button>
           <input type="file" id="fileInput-merge" accept=".pdf" multiple hidden />
+        </div>
+        <div class="compact-btn-row" id="compactBtnRow-merge" style="display:none">
+          <button class="compact-add-btn" id="compactAddBtn-merge">
+            <span data-i18n="btn_add_more">+ Add more</span>
+          </button>
+          <button class="compact-replace-btn" id="compactReplaceBtn-merge">
+            <span data-i18n="btn_replace_all">↺ Replace all</span>
+          </button>
         </div>
         <div class="file-list sortable" id="fileList-merge"></div>
         <button class="convert-btn" id="convertBtn-merge" disabled>
@@ -211,6 +235,7 @@
         <!-- Image preview -->
         <div class="math-preview-wrap" id="mathPreviewWrap" style="display:none">
           <img id="mathPreviewImg" alt="formula preview" />
+          <button class="math-img-remove" id="mathImgRemove" title="Remove image">×</button>
         </div>
 
         <!-- Recognize button -->
@@ -245,7 +270,10 @@
       <div class="progress-bar">
         <div class="progress-fill" id="progressFill"></div>
       </div>
-      <p class="progress-text" id="progressText"></p>
+      <div class="progress-footer">
+        <p class="progress-text" id="progressText"></p>
+        <button class="cancel-btn" id="cancelBtn" title="Cancel">✕ Cancel</button>
+      </div>
     </div>
 
     <!-- Result Area with Preview (for PDF/image features) -->
