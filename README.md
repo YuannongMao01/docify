@@ -1,119 +1,131 @@
-# DocConverter — PDF, Image & Math OCR Tools
+# Docify — PDF, Image & Math OCR
 
-一个现代 Apple 风格的 Chrome/Edge 浏览器插件，支持文档格式转换和数学公式识别，完全本地运行。
+A modern Apple-style Chrome/Edge browser extension for document conversion and math formula recognition. Everything runs locally — no file uploads, no servers, no data collection.
 
-## ✨ 功能
+## ✨ Features
 
-| Tab | 功能 |
-|-----|------|
-| 🖼️ **图片→PDF** | JPG/PNG/JPEG 单张或批量转换为 PDF，支持 A4/Letter/适应图片 |
-| 📄 **PDF→图片** | PDF 每页导出为 PNG 或 JPEG，支持标准/高清/超清分辨率 |
-| 📑 **合并PDF** | 多个 PDF 合并为一个，支持拖拽排序 |
-| 🔢 **公式识别** | 截图数学公式 → 自动识别为 LaTeX 代码，支持渲染预览 |
+| Tab | Feature |
+|-----|---------|
+| 🖼️ **Img→PDF** | Convert JPG/PNG/JPEG to PDF (single or batch), supports A4/Letter/Fit |
+| 📄 **PDF→Img** | Export each PDF page as PNG or JPEG, supports Standard/HD/Ultra HD |
+| 📑 **Merge PDF** | Merge multiple PDFs, drag or use ▲▼ buttons to reorder |
+| 🔢 **Math OCR** | Screenshot a math formula → get LaTeX code with rendered preview |
 
 ---
 
-## 🚀 安装步骤
+## 🚀 Installation
 
-### 第一步：下载 JS 库（PDF 功能需要）
+### Step 1: Download JS Libraries
 
 ```bash
 bash setup.sh
-# 或
+# or
 python3 download_libs.py
 ```
 
-### 第二步：安装公式识别服务（Math OCR 功能需要）
+### Step 2: Install Math OCR Service (optional, for Math OCR tab)
 
+**macOS:**
 ```bash
-# 安装 pix2tex（LaTeX-OCR）
-pip install pix2tex Pillow
-
-# 启动本地 API 服务器（每次使用前需要运行）
-python3 latex_server.py
+bash install_service.sh
 ```
 
-服务器启动后会在 `http://localhost:8765` 监听。
+**Windows:**
+```
+Double-click install_service.bat
+```
 
-> **首次运行**会自动下载 pix2tex 模型（约 300MB），请耐心等待。
+This will automatically:
+- Install `texify` and `Pillow` via pip
+- Register the server to auto-start on login (macOS: LaunchAgent, Windows: Task Scheduler)
+- First run downloads the Texify model (~500MB)
 
-### 第三步：加载插件到 Chrome/Edge
+### Step 3: Load Extension in Chrome/Edge
 
-1. 打开 Chrome，地址栏输入：`chrome://extensions/`
-2. 右上角开启 **开发者模式**（Developer mode）
-3. 点击 **加载已解压的扩展程序**（Load unpacked）
-4. 选择 `doc-converter-extension` 文件夹
-5. 完成！点击工具栏中的 DocConverter 图标即可使用
+1. Open `chrome://extensions/`
+2. Enable **Developer mode** (top right toggle)
+3. Click **Load unpacked**
+4. Select the `docify` folder
+5. Done! Click the Docify icon in the toolbar
+
+> **Edge users**: Open `edge://extensions/` — same steps apply
 
 ---
 
-## 🔢 公式识别使用方法
+## 🔢 Using Math OCR
 
-1. 截图一张包含数学公式的图片（系统截图工具 / 截图软件）
-2. 切换到 **公式识别** Tab
-3. 确认服务器状态为 **✓ 在线**（绿色）
-4. 拖拽截图或点击"选择图片"
-5. 点击 **识别公式**
-6. 等待识别完成（首次约 5-10 秒）
-7. 复制 LaTeX 代码，或查看渲染预览
+1. Take a screenshot of a math formula
+2. Switch to the **Math OCR** tab
+3. Confirm the server status shows **✓ Online** (green dot)
+4. Drop the image, click **Select Image**, or press **⌘V / Ctrl+V** to paste
+5. Click **Recognize Formula**
+6. Copy the LaTeX code or view the rendered preview
 
-### 示例输出
+**Example output:**
 
-输入图片：`∫₀^∞ e^(-x²) dx = √π/2`
+Input image: `∫₀^∞ e^(-x²) dx = √π/2`
 
-输出 LaTeX：
+Output LaTeX:
 ```latex
 \int_{0}^{\infty} e^{-x^{2}} d x=\frac{\sqrt{\pi}}{2}
 ```
 
 ---
 
-## 📁 文件结构
+## 📁 File Structure
 
 ```
-doc-converter-extension/
-├── manifest.json              # Chrome MV3 配置
-├── latex_server.py            # 本地 LaTeX OCR API 服务器
-├── setup.sh                   # 一键下载 JS 库
-├── download_libs.py           # Python 下载脚本
+docify/
+├── manifest.json              # Chrome MV3 config
+├── latex_server.py            # Local LaTeX OCR API server (Texify)
+├── install_service.sh         # macOS one-click install script
+├── install_service.bat        # Windows one-click install script
+├── uninstall_service.sh       # macOS uninstall
+├── uninstall_service.bat      # Windows uninstall
+├── setup.sh                   # Download JS libraries (macOS/Linux)
+├── download_libs.py           # Download JS libraries (cross-platform)
 ├── popup/
-│   ├── popup.html             # 主界面（4个功能Tab）
-│   ├── popup.css              # Apple 风格样式
-│   └── popup.js               # 所有功能逻辑
+│   ├── popup.html             # Main UI (4 tabs)
+│   ├── popup.css              # Apple-style design
+│   └── popup.js               # All conversion logic
 ├── background/
-│   └── service_worker.js      # 后台服务
-└── lib/                       # JS 库（运行 setup.sh 后生成）
+│   └── service_worker.js      # Background service worker
+└── lib/                       # JS libraries (run setup.sh to populate)
     ├── pdf-lib.min.js
     ├── pdf.min.js
-    └── pdf.worker.min.js
+    ├── pdf.worker.min.js
+    ├── katex.min.js
+    ├── katex.min.css
+    └── fonts/                 # KaTeX fonts
 ```
 
 ---
 
-## 🔒 隐私说明
+## 🔒 Privacy
 
-- PDF/图片处理均在**本地浏览器**完成，不上传文件
-- 公式识别通过**本地 Python 服务器**处理，不联网
-- 不收集任何用户数据
-
----
-
-## 🛠️ 技术栈
-
-| 组件 | 技术 |
-|------|------|
-| PDF 创建/合并 | pdf-lib v1.17.1 |
-| PDF 渲染 | PDF.js v3.11.174 |
-| 公式识别 | pix2tex (LaTeX-OCR) |
-| 公式渲染 | MathJax v3 |
-| 浏览器插件 | Chrome Extension Manifest V3 |
+- All PDF/image processing runs **locally in the browser** — no uploads
+- Math OCR runs on a **local Python server** — no internet required
+- **Zero data persistence** — files are cleared when the popup closes
+- No analytics, no tracking, no cookies
 
 ---
 
-## 💻 兼容性
+## 🛠️ Tech Stack
 
-| 平台 | 浏览器 | 版本要求 |
-|------|--------|---------|
+| Component | Technology |
+|-----------|-----------|
+| PDF creation/merge | pdf-lib v1.17.1 |
+| PDF rendering | PDF.js v3.11.174 |
+| Math formula recognition | Texify (VikParuchuri) |
+| LaTeX rendering | KaTeX v0.16.9 |
+| Browser extension | Chrome Extension Manifest V3 |
+
+---
+
+## 💻 Compatibility
+
+| Platform | Browser | Version |
+|----------|---------|---------|
 | macOS | Chrome | 88+ |
 | macOS | Edge | 88+ |
 | Windows | Chrome | 88+ |
@@ -121,13 +133,16 @@ doc-converter-extension/
 
 ---
 
-## ❓ 常见问题
+## ❓ FAQ
 
-**Q: 公式识别服务器显示离线？**
-A: 确保已运行 `python3 latex_server.py`，并且 pix2tex 已安装。
+**Q: Math OCR server shows offline?**
+A: Make sure you've run `install_service.sh` (macOS) or `install_service.bat` (Windows).
 
-**Q: 首次识别很慢？**
-A: pix2tex 首次运行需要加载模型（约 300MB），之后会快很多。
+**Q: First recognition is slow?**
+A: Texify downloads its model (~500MB) on first run. Subsequent runs are much faster.
 
-**Q: 识别结果不准确？**
-A: 建议使用清晰的截图，公式区域尽量裁剪干净，避免背景干扰。
+**Q: Recognition accuracy is poor?**
+A: Use a clear screenshot with the formula cropped tightly. Avoid noisy backgrounds.
+
+**Q: Do I need the Math OCR server for PDF/image features?**
+A: No. The PDF conversion and merge features work completely offline without any server.
