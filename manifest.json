@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Docify - PDF, Image & Math OCR",
+  "version": "1.2.0",
+  "description": "Convert images to PDF, PDF to images, merge PDFs, and recognize math formulas (LaTeX OCR). Works offline.",
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Docify"
+  },
+  "background": {
+    "service_worker": "background/service_worker.js"
+  },
+  "permissions": [
+    "downloads",
+    "storage",
+    "tabs",
+    "management"
+  ],
+  "host_permissions": [
+    "http://localhost:8765/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' http://localhost:8765"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["lib/*", "lib/fonts/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

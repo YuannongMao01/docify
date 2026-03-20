@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Docify</title>
+  <link rel="stylesheet" href="popup.css" />
+  <link rel="stylesheet" href="../lib/katex.min.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="app-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="14 2 14 8 20 8" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span class="app-title">Docify</span>
+      </div>
+      <div class="header-right">
+        <div class="lang-toggle" id="langToggle" title="Switch Language">
+          <span class="lang-opt" id="langZH">中</span>
+          <span class="lang-sep">/</span>
+          <span class="lang-opt active" id="langEN">EN</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Tab Navigation (4 tabs) -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="img2pdf">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="2"/>
+          <polyline points="21 15 16 10 5 21" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        <span data-i18n="tab_img2pdf">Img→PDF</span>
+      </button>
+      <button class="tab-btn" data-tab="pdf2img">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/>
+          <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        <span data-i18n="tab_pdf2img">PDF→Img</span>
+      </button>
+      <button class="tab-btn" data-tab="merge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M8 6H21M8 12H21M8 18H21M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span data-i18n="tab_merge">Merge</span>
+      </button>
+      <button class="tab-btn" data-tab="math">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M4 7h16M4 12h10M4 17h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M17 14l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span data-i18n="tab_math">Math OCR</span>
+      </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Tab: Image to PDF -->
+      <div class="tab-panel active" id="tab-img2pdf">
+        <div class="drop-zone" id="dropZone-img2pdf">
+          <div class="drop-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="17 8 12 3 7 8" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="12" y1="3" x2="12" y2="15" stroke="#007AFF" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p class="drop-title" data-i18n="drop_img_title">Drop images here</p>
+          <p class="drop-subtitle" data-i18n="drop_img_sub">JPG, PNG, JPEG — single or batch</p>
+          <button class="select-btn" id="selectBtn-img2pdf" data-i18n="btn_select_files">Select Files</button>
+          <input type="file" id="fileInput-img2pdf" accept=".jpg,.jpeg,.png" multiple hidden />
+        </div>
+        <div class="file-list" id="fileList-img2pdf"></div>
+        <div class="options-row">
+          <label class="option-label" data-i18n="label_page_size">Page Size</label>
+          <select class="option-select" id="pageSize-img2pdf">
+            <option value="A4">A4</option>
+            <option value="Letter">Letter</option>
+            <option value="fit" data-i18n="opt_fit">Fit Image</option>
+          </select>
+        </div>
+        <button class="convert-btn" id="convertBtn-img2pdf" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <polyline points="23 4 23 10 17 10" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span data-i18n="btn_convert">Convert</span>
+        </button>
+      </div>
+
+      <!-- Tab: PDF to Image -->
+      <div class="tab-panel" id="tab-pdf2img">
+        <div class="drop-zone" id="dropZone-pdf2img">
+          <div class="drop-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="17 8 12 3 7 8" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="12" y1="3" x2="12" y2="15" stroke="#007AFF" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p class="drop-title" data-i18n="drop_pdf_title">Drop PDF here</p>
+          <p class="drop-subtitle" data-i18n="drop_pdf2img_sub">Each page exported as image</p>
+          <button class="select-btn" id="selectBtn-pdf2img" data-i18n="btn_select_pdf">Select PDF</button>
+          <input type="file" id="fileInput-pdf2img" accept=".pdf" hidden />
+        </div>
+        <div class="file-list" id="fileList-pdf2img"></div>
+        <div class="options-row">
+          <label class="option-label" data-i18n="label_format">Format</label>
+          <select class="option-select" id="imgFormat-pdf2img">
+            <option value="png">PNG</option>
+            <option value="jpeg">JPEG</option>
+          </select>
+        </div>
+        <div class="options-row">
+          <label class="option-label" data-i18n="label_resolution">Resolution</label>
+          <select class="option-select" id="dpi-pdf2img">
+            <option value="1" data-i18n="opt_std">Standard (72dpi)</option>
+            <option value="2" selected data-i18n="opt_hd">HD (144dpi)</option>
+            <option value="3" data-i18n="opt_uhd">Ultra HD (216dpi)</option>
+          </select>
+        </div>
+        <button class="convert-btn" id="convertBtn-pdf2img" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <polyline points="23 4 23 10 17 10" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span data-i18n="btn_convert">Convert</span>
+        </button>
+      </div>
+
+      <!-- Tab: Merge PDF -->
+      <div class="tab-panel" id="tab-merge">
+        <div class="drop-zone" id="dropZone-merge">
+          <div class="drop-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="17 8 12 3 7 8" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="12" y1="3" x2="12" y2="15" stroke="#007AFF" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p class="drop-title" data-i18n="drop_merge_title">Drop multiple PDFs here</p>
+          <p class="drop-subtitle" data-i18n="drop_merge_sub">Drag to reorder before merging</p>
+          <button class="select-btn" id="selectBtn-merge" data-i18n="btn_select_pdfs">Select PDFs</button>
+          <input type="file" id="fileInput-merge" accept=".pdf" multiple hidden />
+        </div>
+        <div class="file-list sortable" id="fileList-merge"></div>
+        <button class="convert-btn" id="convertBtn-merge" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M8 6H21M8 12H21M8 18H21M3 6h.01M3 12h.01M3 18h.01" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span data-i18n="btn_merge">Merge PDFs</span>
+        </button>
+      </div>
+
+      <!-- Tab: Math OCR -->
+      <div class="tab-panel" id="tab-math">
+
+        <!-- Server status indicator -->
+        <div class="server-status" id="serverStatus">
+          <div class="server-dot" id="serverDot"></div>
+          <span class="server-label" id="serverLabel" data-i18n="math_checking">Checking server...</span>
+          <button class="server-retry-btn" id="serverRetryBtn" data-i18n="math_retry">Retry</button>
+        </div>
+
+        <!-- Server offline notice -->
+        <div class="server-notice" id="serverNotice" style="display:none">
+          <p data-i18n="math_server_notice">⚠️ Server not running. First-time setup:</p>
+          <div class="install-steps">
+              <div class="install-step">
+              <span class="step-num">1</span>
+              <div class="step-content">
+                <span data-i18n="math_step1">Open Terminal and run:</span>
+                <code class="server-cmd" id="installCmd">bash ~/Desktop/asin/doc-converter-extension/install_service.sh</code>
+              </div>
+            </div>
+            <div class="install-step">
+              <span class="step-num">2</span>
+              <div class="step-content">
+                <span data-i18n="math_step2">Done! Server starts automatically on login.</span>
+              </div>
+            </div>
+          </div>
+          <button class="install-btn" id="openInstallBtn" data-i18n="math_open_install">📂 Show Install Script</button>
+          <p class="server-notice-sub" data-i18n="math_install_hint">Requires: <code>pip install texteller Pillow</code></p>
+        </div>
+
+        <!-- Upload area -->
+        <div class="drop-zone" id="dropZone-math">
+          <div class="drop-icon math-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="3" width="20" height="18" rx="2" stroke="#007AFF" stroke-width="2"/>
+              <path d="M7 8h2l2 4 2-4h2M7 16h4M13 16h4" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p class="drop-title" data-i18n="math_drop_title">Drop formula image here</p>
+          <p class="drop-subtitle" data-i18n="math_drop_sub">PNG, JPG — screenshot of a math formula</p>
+          <p class="drop-paste-hint" data-i18n="math_paste_hint">or press ⌘V / Ctrl+V to paste</p>
+          <button class="select-btn" id="selectBtn-math" data-i18n="math_select_btn">Select Image</button>
+          <input type="file" id="fileInput-math" accept=".png,.jpg,.jpeg" hidden />
+        </div>
+
+        <!-- Image preview -->
+        <div class="math-preview-wrap" id="mathPreviewWrap" style="display:none">
+          <img id="mathPreviewImg" alt="formula preview" />
+        </div>
+
+        <!-- Recognize button -->
+        <button class="convert-btn math-btn" id="recognizeBtn" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <circle cx="11" cy="11" r="8" stroke="white" stroke-width="2"/>
+            <path d="M21 21l-4.35-4.35" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span data-i18n="math_recognize_btn">Recognize Formula</span>
+        </button>
+
+        <!-- LaTeX result -->
+        <div class="latex-result" id="latexResult" style="display:none">
+          <div class="latex-result-header">
+            <span class="latex-result-label" data-i18n="math_result_label">LaTeX Output</span>
+            <button class="copy-btn" id="copyLatexBtn" data-i18n="math_copy_btn">Copy</button>
+          </div>
+          <div class="latex-code-wrap">
+            <pre class="latex-code" id="latexCode"></pre>
+          </div>
+          <!-- Rendered preview using MathJax-like display -->
+          <div class="latex-render-label" data-i18n="math_render_label">Rendered Preview</div>
+          <div class="latex-render" id="latexRender"></div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Progress Bar -->
+    <div class="progress-container" id="progressContainer" style="display:none">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <p class="progress-text" id="progressText"></p>
+    </div>
+
+    <!-- Result Area with Preview (for PDF/image features) -->
+    <div class="result-area" id="resultArea" style="display:none">
+      <div class="output-preview" id="outputPreview">
+        <div class="output-preview-label" id="outputPreviewLabel"></div>
+        <div class="output-preview-grid" id="outputPreviewGrid"></div>
+      </div>
+      <div class="result-action-row">
+        <div class="result-success">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="#34C759" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="22 4 12 14.01 9 11.01" stroke="#34C759" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="resultText"></span>
+        </div>
+        <button class="download-btn" id="downloadBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="7 10 12 15 17 10" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="12" y1="15" x2="12" y2="3" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span data-i18n="btn_download">Download</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script src="../lib/katex.min.js"></script>
+  <script src="../lib/pdf-lib.min.js"></script>
+  <script src="../lib/pdf.min.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
