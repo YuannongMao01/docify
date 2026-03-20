@@ -559,28 +559,68 @@ async function showResult(text, previewType) {
     }
   } else if (previewType === 'images') {
     label.textContent = t('preview_label_imgs');
-    // Build modal pages array (img elements with object URLs)
-    const modalPages = [];
-    for (let i = 0; i < state.outputBlobs.length; i++) {
-      const { blob } = state.outputBlobs[i];
-      const url   = URL.createObjectURL(blob);
-      const thumb = document.createElement('div');
-      thumb.className = 'preview-thumb';
-      const img = document.createElement('img');
-      img.src = url;
-      const lbl = document.createElement('div');
-      lbl.className = 'preview-thumb-label';
-      lbl.textContent = `P${i+1}`;
-      thumb.appendChild(img);
-      thumb.appendChild(lbl);
-      grid.appendChild(thumb);
-      modalPages.push({ type: 'img', src: url, alt: `Page ${i+1}` });
-      // Bind click to open modal at this page
-      const idx = i;
-      thumb.addEventListener('click', () => {
-        openPreviewModal(modalPages, idx, `🖼️ ${state.outputBlobs.length} pages`);
-      });
+    const total = state.outputBlobs.length;
+
+    // Build modal pages array
+    const modalPages = state.outputBlobs.map((b, i) => ({
+      type: 'img',
+      src:  URL.createObjectURL(b.blob),
+      alt:  `Page ${i + 1}`,
+    }));
+
+    // ── Inline large preview with prev/next controls ──────
+    let inlineCurrent = 0;
+
+    // Container
+    const inlineWrap = document.createElement('div');
+    inlineWrap.className = 'preview-single';
+    inlineWrap.style.position = 'relative';
+    inlineWrap.style.cursor = 'zoom-in';
+
+    // Large image
+    const bigImg = document.createElement('img');
+    bigImg.src = modalPages[0].src;
+    bigImg.style.cssText = 'width:100%;height:auto;display:block;max-height:160px;object-fit:contain;';
+    inlineWrap.appendChild(bigImg);
+
+    // Page badge (top-left)
+    const badge = document.createElement('div');
+    badge.style.cssText = 'position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.6);color:white;font-size:10px;padding:2px 7px;border-radius:10px;pointer-events:none;';
+    badge.textContent = `1 / ${total}`;
+    inlineWrap.appendChild(badge);
+
+    // Prev / Next buttons (only if multiple pages)
+    if (total > 1) {
+      const mkBtn = (label, delta) => {
+        const btn = document.createElement('button');
+        btn.textContent = label;
+        btn.style.cssText = 'position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.5);color:white;border:none;border-radius:4px;width:24px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;';
+        btn.style[delta < 0 ? 'left' : 'right'] = '4px';
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const next = inlineCurrent + delta;
+          if (next < 0 || next >= total) return;
+          inlineCurrent = next;
+          bigImg.src = modalPages[inlineCurrent].src;
+          badge.textContent = `${inlineCurrent + 1} / ${total}`;
+          prevBtn.style.opacity = inlineCurrent === 0 ? '0.3' : '1';
+          nextBtn.style.opacity = inlineCurrent === total - 1 ? '0.3' : '1';
+        });
+        return btn;
+      };
+      const prevBtn = mkBtn('‹', -1);
+      const nextBtn = mkBtn('›', 1);
+      prevBtn.style.opacity = '0.3'; // starts at first page
+      inlineWrap.appendChild(prevBtn);
+      inlineWrap.appendChild(nextBtn);
     }
+
+    // Click big image → open modal at current page
+    inlineWrap.addEventListener('click', () => {
+      openPreviewModal(modalPages, inlineCurrent, `🖼️ ${total} page${total > 1 ? 's' : ''}`);
+    });
+
+    grid.appendChild(inlineWrap);
   }
 }
 
