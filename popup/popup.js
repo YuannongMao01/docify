@@ -20,6 +20,7 @@ const I18N = {
     toast_unsupported:'Unsupported file type',
     result_img2pdf_done:'images converted to PDF',
     result_pdf2img_done:'pages exported as',
+    result_pdf2img_multi:'PDFs converted —',
     result_merge_done:'PDFs merged successfully',
     preview_label_pdf:'📄 Preview (first page)',
     preview_label_imgs:'🖼️ Preview (all pages)',
@@ -68,6 +69,7 @@ const I18N = {
     toast_unsupported:'不支持的文件类型',
     result_img2pdf_done:'张图片已转换为 PDF',
     result_pdf2img_done:'页已导出为',
+    result_pdf2img_multi:'个 PDF 已转换 —',
     result_merge_done:'个 PDF 已合并',
     preview_label_pdf:'📄 预览（第一页）',
     preview_label_imgs:'🖼️ 预览（所有页面）',
@@ -386,25 +388,50 @@ async function convertPdf2Img() {
   try {
     if (typeof pdfjsLib === 'undefined') throw new Error('PDF.js not loaded');
     pdfjsLib.GlobalWorkerOptions.workerSrc = '../lib/pdf.worker.min.js';
-    const ab  = await readFileAsArrayBuffer(files[0]);
-    const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
-    const numPages = pdf.numPages;
-    const blobs    = [];
-    const baseName = files[0].name.replace(/\.pdf$/i,'');
-    for (let p = 1; p <= numPages; p++) {
-      showProgress(10+Math.round((p/numPages)*85), `${t('progress_processing')} ${p}/${numPages}...`);
-      const page   = await pdf.getPage(p);
-      const vp     = page.getViewport({ scale });
-      const canvas = document.createElement('canvas');
-      canvas.width = vp.width; canvas.height = vp.height;
-      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-      const mime = format==='jpeg' ? 'image/jpeg' : 'image/png';
-      const blob = dataURLtoBlob(canvas.toDataURL(mime, format==='jpeg' ? 0.92 : undefined));
-      blobs.push({ blob, filename: `${baseName}_page${p}.${format==='jpeg'?'jpg':'png'}` });
+
+    const allBlobs = [];
+    let totalPages = 0;
+
+    for (let fi = 0; fi < files.length; fi++) {
+      const file     = files[fi];
+      const baseName = file.name.replace(/\.pdf$/i, '');
+      // Progress: outer loop per file
+      const fileBase = Math.round((fi / files.length) * 90);
+      showProgress(fileBase, `${t('progress_processing')} ${file.name} (${fi+1}/${files.length})...`);
+
+      const ab  = await readFileAsArrayBuffer(file);
+      const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+      const numPages = pdf.numPages;
+
+      for (let p = 1; p <= numPages; p++) {
+        // Progress: inner loop per page within this file
+        const pct = fileBase + Math.round((p / numPages) * (90 / files.length));
+        showProgress(pct, `${t('progress_processing')} ${file.name} — ${p}/${numPages}...`);
+
+        const page   = await pdf.getPage(p);
+        const vp     = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = vp.width; canvas.height = vp.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+        const blob = dataURLtoBlob(canvas.toDataURL(mime, format === 'jpeg' ? 0.92 : undefined));
+        // Prefix filename with PDF name when multiple files
+        const fname = files.length > 1
+          ? `${baseName}_page${p}.${format === 'jpeg' ? 'jpg' : 'png'}`
+          : `${baseName}_page${p}.${format === 'jpeg' ? 'jpg' : 'png'}`;
+        allBlobs.push({ blob, filename: fname });
+        totalPages++;
+      }
     }
-    state.outputBlobs = blobs;
+
+    state.outputBlobs = allBlobs;
     showProgress(100, t('progress_done'));
-    setTimeout(() => { hideProgress(); showResult(`${numPages} ${t('result_pdf2img_done')} ${format.toUpperCase()}`, 'images'); }, 400);
+
+    const resultText = files.length > 1
+      ? `${files.length} ${t('result_pdf2img_multi')} ${totalPages} ${t('result_pdf2img_done')} ${format.toUpperCase()}`
+      : `${totalPages} ${t('result_pdf2img_done')} ${format.toUpperCase()}`;
+
+    setTimeout(() => { hideProgress(); showResult(resultText, 'images'); }, 400);
   } catch(err) {
     hideProgress(); showToast(t('err_convert') + ': ' + err.message, 'error'); console.error(err);
   } finally { setLoading('convertBtn-pdf2img', false); }
