@@ -126,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDownloadBtn();
   initCancelBtn();
   initMathOCR();
+  initPreviewModal();
   applyI18n();
 });
 
@@ -498,10 +499,20 @@ async function showResult(text, previewType) {
         wrap.className = 'preview-single';
         wrap.appendChild(canvas);
         grid.appendChild(wrap);
+        // Click to open modal
+        wrap.addEventListener('click', () => {
+          openPreviewModal(
+            [{ type: 'canvas', element: canvas }],
+            0,
+            previewType === 'pdf' ? '📄 PDF Preview' : '📑 Merged PDF Preview'
+          );
+        });
       } catch(e) { console.warn('Preview failed', e); }
     }
   } else if (previewType === 'images') {
     label.textContent = t('preview_label_imgs');
+    // Build modal pages array (img elements with object URLs)
+    const modalPages = [];
     for (let i = 0; i < state.outputBlobs.length; i++) {
       const { blob } = state.outputBlobs[i];
       const url   = URL.createObjectURL(blob);
@@ -509,13 +520,18 @@ async function showResult(text, previewType) {
       thumb.className = 'preview-thumb';
       const img = document.createElement('img');
       img.src = url;
-      img.onload = () => URL.revokeObjectURL(url);
       const lbl = document.createElement('div');
       lbl.className = 'preview-thumb-label';
       lbl.textContent = `P${i+1}`;
       thumb.appendChild(img);
       thumb.appendChild(lbl);
       grid.appendChild(thumb);
+      modalPages.push({ type: 'img', src: url, alt: `Page ${i+1}` });
+      // Bind click to open modal at this page
+      const idx = i;
+      thumb.addEventListener('click', () => {
+        openPreviewModal(modalPages, idx, `🖼️ ${state.outputBlobs.length} pages`);
+      });
     }
   }
 }
@@ -524,6 +540,75 @@ function hideResult() {
   $('resultArea').style.display = 'none';
   $('outputPreviewGrid').innerHTML = '';
   state.outputBlobs = [];
+}
+
+// ─── Preview Modal ────────────────────────────────────────────
+// modalPages: array of { type: 'canvas'|'img', element }
+const modalState = { pages: [], current: 0 };
+
+function initPreviewModal() {
+  $('previewModalClose').addEventListener('click', closePreviewModal);
+  $('previewModalOverlay').addEventListener('click', closePreviewModal);
+  $('previewPrevBtn').addEventListener('click', () => navigateModal(-1));
+  $('previewNextBtn').addEventListener('click', () => navigateModal(1));
+  document.addEventListener('keydown', e => {
+    if ($('previewModal').style.display === 'none') return;
+    if (e.key === 'Escape') closePreviewModal();
+    if (e.key === 'ArrowLeft')  navigateModal(-1);
+    if (e.key === 'ArrowRight') navigateModal(1);
+  });
+}
+
+function openPreviewModal(pages, startIndex, title) {
+  modalState.pages   = pages;
+  modalState.current = startIndex;
+  $('previewModalTitle').textContent = title;
+  $('previewModal').style.display = 'flex';
+  renderModalPage();
+}
+
+function closePreviewModal() {
+  $('previewModal').style.display = 'none';
+  $('previewModalBody').innerHTML = '';
+  modalState.pages = [];
+}
+
+function navigateModal(delta) {
+  const next = modalState.current + delta;
+  if (next < 0 || next >= modalState.pages.length) return;
+  modalState.current = next;
+  renderModalPage();
+}
+
+function renderModalPage() {
+  const { pages, current } = modalState;
+  const body = $('previewModalBody');
+  body.innerHTML = '';
+
+  const page = pages[current];
+  if (!page) return;
+
+  if (page.type === 'canvas') {
+    // Clone the canvas into the modal
+    const clone = document.createElement('canvas');
+    clone.width  = page.element.width;
+    clone.height = page.element.height;
+    clone.getContext('2d').drawImage(page.element, 0, 0);
+    body.appendChild(clone);
+  } else if (page.type === 'img') {
+    const img = document.createElement('img');
+    img.src = page.src;
+    img.alt = page.alt || '';
+    body.appendChild(img);
+  }
+
+  // Update nav
+  const total = pages.length;
+  const nav   = $('previewModalNav');
+  nav.style.display = total > 1 ? 'flex' : 'none';
+  $('previewNavIndicator').textContent = `${current + 1} / ${total}`;
+  $('previewPrevBtn').disabled = current === 0;
+  $('previewNextBtn').disabled = current === total - 1;
 }
 
 // ─── Cancel Button ────────────────────────────────────────────
