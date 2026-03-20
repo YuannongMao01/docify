@@ -515,24 +515,45 @@ async function showResult(text, previewType) {
     if (blob && typeof pdfjsLib !== 'undefined') {
       try {
         pdfjsLib.GlobalWorkerOptions.workerSrc = '../lib/pdf.worker.min.js';
-        const ab   = await blob.arrayBuffer();
-        const pdf  = await pdfjsLib.getDocument({ data: ab }).promise;
-        const page = await pdf.getPage(1);
-        const vp   = page.getViewport({ scale: 1.2 });
-        const canvas = document.createElement('canvas');
-        canvas.width = vp.width; canvas.height = vp.height;
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        const ab  = await blob.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+        const numPages  = pdf.numPages;
+        const modalPages = [];
+
+        // Render all pages (store canvases for modal)
+        for (let p = 1; p <= numPages; p++) {
+          const page = await pdf.getPage(p);
+          const vp   = page.getViewport({ scale: 1.2 });
+          const canvas = document.createElement('canvas');
+          canvas.width = vp.width; canvas.height = vp.height;
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+          modalPages.push({ type: 'canvas', element: canvas });
+        }
+
+        // Show first page as thumbnail preview
+        const firstCanvas = modalPages[0].element;
         const wrap = document.createElement('div');
         wrap.className = 'preview-single';
-        wrap.appendChild(canvas);
+        wrap.appendChild(firstCanvas);
+
+        // Page count badge
+        if (numPages > 1) {
+          const badge = document.createElement('div');
+          badge.style.cssText = 'position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,0.6);color:white;font-size:10px;padding:2px 7px;border-radius:10px;pointer-events:none;';
+          badge.textContent = `1 / ${numPages}`;
+          wrap.style.position = 'relative';
+          wrap.appendChild(badge);
+        }
+
         grid.appendChild(wrap);
-        // Click to open modal
+
+        const modalTitle = previewType === 'pdf'
+          ? `📄 PDF — ${numPages} page${numPages > 1 ? 's' : ''}`
+          : `📑 Merged PDF — ${numPages} page${numPages > 1 ? 's' : ''}`;
+
+        // Click to open modal (starts at page 1)
         wrap.addEventListener('click', () => {
-          openPreviewModal(
-            [{ type: 'canvas', element: canvas }],
-            0,
-            previewType === 'pdf' ? '📄 PDF Preview' : '📑 Merged PDF Preview'
-          );
+          openPreviewModal(modalPages, 0, modalTitle);
         });
       } catch(e) { console.warn('Preview failed', e); }
     }
