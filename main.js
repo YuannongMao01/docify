@@ -70,8 +70,7 @@ function createWindow() {
     resizable:       true,
     alwaysOnTop:     true,
     skipTaskbar:     true,
-    vibrancy:        'under-window',  // macOS frosted glass
-    visualEffectState: 'active',
+    backgroundColor: '#FFFFFF',
     titleBarStyle:   'hidden',
     webPreferences: {
       preload:            path.join(__dirname, 'preload.js'),
