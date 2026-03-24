@@ -1,30 +1,36 @@
 'use strict';
 
-const { app, BrowserWindow, Tray, Menu, nativeImage, screen, ipcMain, shell } = require('electron');
-const path  = require('path');
-const { spawn, execFile } = require('child_process');
-const http  = require('http');
-const fs    = require('fs');
+const { app, BrowserWindow, Tray, Menu, nativeImage, screen, ipcMain } = require('electron');
+const path   = require('path');
+const { spawn } = require('child_process');
+const http   = require('http');
+const fs     = require('fs');
 
 // ─── Config ───────────────────────────────────────────────────
 const SERVER_PORT  = 8765;
 const WINDOW_W     = 420;
-const WINDOW_H     = 620;
-const MARGIN       = 16;   // distance from screen edge
+const WINDOW_H     = 600;
+const PEEK_W       = 6;    // pixels visible when collapsed (edge peek)
+const MARGIN_Y     = 80;   // distance from top of screen
+const ANIM_STEPS   = 12;   // animation frames
+const ANIM_MS      = 12;   // ms per frame
+const HOVER_ZONE   = 20;   // px from right edge that triggers expand
 
 let mainWindow  = null;
 let tray        = null;
 let serverProc  = null;
 let isQuitting  = false;
+let isExpanded  = false;
+let animTimer   = null;
+let pollTimer   = null;
 
 // ─── App ready ────────────────────────────────────────────────
 app.whenReady().then(() => {
-  // Hide from Dock (menu-bar-only app)
   if (app.dock) app.dock.hide();
-
   createTray();
   createWindow();
   startPythonServer();
+  startMousePoll();
 });
 
 app.on('before-quit', () => { isQuitting = true; });
@@ -32,7 +38,6 @@ app.on('window-all-closed', () => { /* keep running in tray */ });
 
 // ─── Tray ─────────────────────────────────────────────────────
 function createTray() {
-  // Use a simple template image (white icon for dark menu bar)
   const iconPath = path.join(__dirname, 'assets', 'tray-icon.png');
   let icon;
   if (fs.existsSync(iconPath)) {
@@ -40,7 +45,6 @@ function createTray() {
     icon = icon.resize({ width: 18, height: 18 });
     icon.setTemplateImage(true);
   } else {
-    // Fallback: create a simple 18x18 icon programmatically
     icon = nativeImage.createEmpty();
   }
 
@@ -48,93 +52,146 @@ function createTray() {
   tray.setToolTip('Docify');
 
   const menu = Menu.buildFromTemplate([
-    { label: 'Show / Hide Docify', click: toggleWindow },
+    { label: 'Show Docify',  click: () => expandWindow() },
+    { label: 'Hide Docify',  click: () => collapseWindow() },
     { type: 'separator' },
     { label: 'Quit', click: () => { isQuitting = true; app.quit(); } },
   ]);
   tray.setContextMenu(menu);
-  tray.on('click', toggleWindow);
+  tray.on('click', () => isExpanded ? collapseWindow() : expandWindow());
 }
 
 // ─── Window ───────────────────────────────────────────────────
+function getCollapsedX() {
+  const { width } = screen.getPrimaryDisplay().workAreaSize;
+  return width - PEEK_W;
+}
+
+function getExpandedX() {
+  const { width } = screen.getPrimaryDisplay().workAreaSize;
+  return width - WINDOW_W;
+}
+
+function getWindowY() {
+  const { height } = screen.getPrimaryDisplay().workAreaSize;
+  // Center vertically
+  return Math.round((height - WINDOW_H) / 2);
+}
+
 function createWindow() {
-  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
+  const startX = getCollapsedX();
+  const startY = getWindowY();
 
   mainWindow = new BrowserWindow({
     width:  WINDOW_W,
     height: WINDOW_H,
-    x: sw - WINDOW_W - MARGIN,
-    y: sh - WINDOW_H - MARGIN,
-    frame:           false,       // frameless — no native titlebar at all
+    x: startX,
+    y: startY,
+    frame:           false,
     transparent:     false,
-    resizable:       true,
+    resizable:       false,
     alwaysOnTop:     true,
     skipTaskbar:     true,
     backgroundColor: '#FFFFFF',
     webPreferences: {
-      preload:            path.join(__dirname, 'preload.js'),
-      contextIsolation:   true,
-      nodeIntegration:    false,
-      webSecurity:        false,   // allow loading local lib files
+      preload:          path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration:  false,
+      webSecurity:      false,
     },
   });
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'popup.html'));
-
-  // Keep window on top even when other apps are fullscreen
   mainWindow.setAlwaysOnTop(true, 'floating');
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-  // Don't destroy on close — just hide
   mainWindow.on('close', e => {
     if (!isQuitting) {
       e.preventDefault();
-      mainWindow.hide();
+      collapseWindow();
     }
   });
-
-  // Open DevTools in dev mode
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
-  }
 }
 
-function toggleWindow() {
+// ─── Slide animation ──────────────────────────────────────────
+function animateTo(targetX, onDone) {
   if (!mainWindow) return;
-  if (mainWindow.isVisible()) {
-    mainWindow.hide();
-  } else {
-    // Re-position near bottom-right before showing
-    const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
-    mainWindow.setPosition(sw - WINDOW_W - MARGIN, sh - WINDOW_H - MARGIN);
-    mainWindow.show();
-    mainWindow.focus();
-  }
+  if (animTimer) { clearInterval(animTimer); animTimer = null; }
+
+  const [curX, curY] = mainWindow.getPosition();
+  const steps = ANIM_STEPS;
+  let step = 0;
+
+  animTimer = setInterval(() => {
+    step++;
+    const t = step / steps;
+    // Ease out cubic
+    const ease = 1 - Math.pow(1 - t, 3);
+    const newX = Math.round(curX + (targetX - curX) * ease);
+    mainWindow.setPosition(newX, curY);
+    if (step >= steps) {
+      clearInterval(animTimer);
+      animTimer = null;
+      mainWindow.setPosition(targetX, curY);
+      if (onDone) onDone();
+    }
+  }, ANIM_MS);
 }
 
-// ─── IPC: window drag / close / minimize ─────────────────────
-ipcMain.on('window-drag', (e, { deltaX, deltaY }) => {
-  if (!mainWindow) return;
-  const [x, y] = mainWindow.getPosition();
-  mainWindow.setPosition(x + deltaX, y + deltaY);
-});
+function expandWindow() {
+  if (isExpanded || !mainWindow) return;
+  isExpanded = true;
+  mainWindow.show();
+  mainWindow.focus();
+  animateTo(getExpandedX());
+  // Notify renderer
+  mainWindow.webContents.send('window-state', 'expanded');
+}
 
-ipcMain.on('window-close', () => {
-  if (mainWindow) mainWindow.hide();
-});
+function collapseWindow() {
+  if (!isExpanded || !mainWindow) return;
+  isExpanded = false;
+  animateTo(getCollapsedX(), () => {
+    // Keep window visible but at edge (so mouse poll can detect hover)
+  });
+  mainWindow.webContents.send('window-state', 'collapsed');
+}
 
-ipcMain.on('window-minimize', () => {
-  if (mainWindow) mainWindow.minimize();
-});
+// ─── Mouse proximity poll ─────────────────────────────────────
+// Poll mouse position every 100ms; expand when cursor is near right edge
+function startMousePoll() {
+  const { screen: electronScreen } = require('electron');
+  pollTimer = setInterval(() => {
+    if (!mainWindow) return;
+    const { x, y } = electronScreen.getCursorScreenPoint();
+    const { width, height } = electronScreen.getPrimaryDisplay().workAreaSize;
+    const winY = getWindowY();
+
+    const nearRightEdge = x >= width - HOVER_ZONE;
+    const inVerticalRange = y >= winY && y <= winY + WINDOW_H;
+
+    if (nearRightEdge && inVerticalRange && !isExpanded) {
+      expandWindow();
+    } else if (!nearRightEdge && isExpanded) {
+      // Collapse when mouse moves away from the window area
+      const [winX] = mainWindow.getPosition();
+      const mouseInWindow = x >= winX && x <= winX + WINDOW_W &&
+                            y >= winY && y <= winY + WINDOW_H;
+      if (!mouseInWindow) {
+        collapseWindow();
+      }
+    }
+  }, 100);
+}
+
+// ─── IPC ──────────────────────────────────────────────────────
+ipcMain.on('window-close', () => collapseWindow());
+ipcMain.on('window-collapse', () => collapseWindow());
 
 // ─── Python server ────────────────────────────────────────────
 function startPythonServer() {
-  // Check if server is already running
   checkServer(running => {
-    if (running) {
-      console.log('Server already running on port', SERVER_PORT);
-      return;
-    }
+    if (running) { console.log('Server already running on port', SERVER_PORT); return; }
     launchServer();
   });
 }
@@ -148,46 +205,27 @@ function checkServer(cb) {
 }
 
 function launchServer() {
-  // Find latex_server.py — check multiple locations
   const candidates = [
-    path.join(process.resourcesPath, 'latex_server.py'),                    // packaged app
-    path.join(__dirname, '..', 'doc-converter-extension', 'latex_server.py'), // dev mode
+    path.join(process.resourcesPath, 'latex_server.py'),
+    path.join(__dirname, '..', 'doc-converter-extension', 'latex_server.py'),
     path.join(app.getPath('home'), 'Desktop', 'asin', 'doc-converter-extension', 'latex_server.py'),
   ];
-
   const serverScript = candidates.find(p => fs.existsSync(p));
-  if (!serverScript) {
-    console.warn('latex_server.py not found, server not started');
-    return;
-  }
+  if (!serverScript) { console.warn('latex_server.py not found'); return; }
 
-  const python = findPython();
-  if (!python) {
-    console.warn('Python not found, server not started');
-    return;
-  }
-
-  console.log(`Starting server: ${python} ${serverScript}`);
-  serverProc = spawn(python, [serverScript], {
-    detached: false,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-
-  serverProc.stdout.on('data', d => console.log('[server]', d.toString().trim()));
-  serverProc.stderr.on('data', d => console.warn('[server]', d.toString().trim()));
-  serverProc.on('exit', code => console.log('[server] exited with code', code));
-
-  app.on('quit', () => {
-    if (serverProc && !serverProc.killed) serverProc.kill();
-  });
-}
-
-function findPython() {
-  const candidates = [
+  const pythonCandidates = [
     '/Library/Frameworks/Python.framework/Versions/3.12/bin/python3',
     '/usr/local/bin/python3',
     '/opt/homebrew/bin/python3',
     '/usr/bin/python3',
   ];
-  return candidates.find(p => fs.existsSync(p)) || 'python3';
+  const python = pythonCandidates.find(p => fs.existsSync(p)) || 'python3';
+
+  serverProc = spawn(python, [serverScript], {
+    detached: false,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  serverProc.stdout.on('data', d => console.log('[server]', d.toString().trim()));
+  serverProc.stderr.on('data', d => console.warn('[server]', d.toString().trim()));
+  app.on('quit', () => { if (serverProc && !serverProc.killed) serverProc.kill(); });
 }
