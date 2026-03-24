@@ -158,34 +158,21 @@ function collapseWindow() {
 }
 
 // ─── Mouse proximity poll ─────────────────────────────────────
-// Expand when mouse near right edge; collapse when mouse leaves the window
+// Only expand when mouse near right edge.
+// Collapsing is ONLY triggered by the × button or tray menu — never automatically.
 function startMousePoll() {
   const { screen: electronScreen } = require('electron');
   pollTimer = setInterval(() => {
-    if (!mainWindow) return;
+    if (!mainWindow || isExpanded) return;  // don't auto-collapse once expanded
     const { x, y } = electronScreen.getCursorScreenPoint();
     const { width } = electronScreen.getPrimaryDisplay().workAreaSize;
     const winY = getWindowY();
 
-    // Trigger zone: rightmost HOVER_ZONE pixels, vertically aligned with window
     const nearRightEdge   = x >= width - HOVER_ZONE;
     const inVerticalRange = y >= winY && y <= winY + WINDOW_H;
 
-    if (!isExpanded && nearRightEdge && inVerticalRange) {
+    if (nearRightEdge && inVerticalRange) {
       expandWindow();
-      return;
-    }
-
-    if (isExpanded) {
-      // Keep expanded while mouse is anywhere inside the window bounds
-      const [winX] = mainWindow.getPosition();
-      const mouseInWindow = x >= winX - 10 &&
-                            x <= winX + WINDOW_W + 10 &&
-                            y >= winY - 10 &&
-                            y <= winY + WINDOW_H + 10;
-      if (!mouseInWindow) {
-        collapseWindow();
-      }
     }
   }, 150);
 }
