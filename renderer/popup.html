@@ -7,54 +7,58 @@
   <link rel="stylesheet" href="popup.css" />
   <link rel="stylesheet" href="lib/katex.min.css" />
   <style>
-    /* ── Custom title bar (replaces native frame) ── */
+    /* ── Custom title bar — NO webkit-app-region drag (use JS drag instead) ── */
     .titlebar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       height: 36px;
       padding: 0 12px;
-      background: rgba(255,255,255,0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: rgba(255,255,255,0.92);
       border-bottom: 1px solid rgba(0,0,0,0.08);
-      -webkit-app-region: drag;   /* drag the window */
       user-select: none;
       flex-shrink: 0;
+      cursor: grab;
     }
+    .titlebar:active { cursor: grabbing; }
     .titlebar-left {
       display: flex;
       align-items: center;
-      gap: 7px;
-      -webkit-app-region: no-drag !important;
-      position: relative;
-      z-index: 100;
-      pointer-events: all !important;
+      gap: 8px;
     }
     .tb-btn {
-      width: 14px;
-      height: 14px;
+      width: 13px;
+      height: 13px;
       border-radius: 50%;
       border: none;
       cursor: pointer;
-      transition: filter 0.15s;
-      -webkit-app-region: no-drag !important;
-      position: relative;
-      z-index: 100;
-      pointer-events: all !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0;
+      font-weight: 900;
+      color: rgba(0,0,0,0.6);
+      transition: filter 0.1s;
+      flex-shrink: 0;
     }
-    .tb-btn:hover { filter: brightness(0.8); }
     .tb-close    { background: #FF5F57; }
     .tb-minimize { background: #FEBC2E; }
-    .tb-maximize { background: #28C840; }
+    .tb-maximize { background: #28C840; opacity: 0.4; cursor: default; }
+
+    /* Show symbols on hover */
+    .titlebar:hover .tb-close::before    { content: '×'; font-size: 9px; }
+    .titlebar:hover .tb-minimize::before { content: '−'; font-size: 9px; }
+    .tb-btn:hover { filter: brightness(0.82); }
+
     .titlebar-title {
       font-size: 13px;
       font-weight: 600;
       color: #1C1C1E;
       letter-spacing: -0.2px;
+      pointer-events: none;
     }
     .titlebar-right {
-      width: 60px; /* balance left buttons */
+      width: 60px;
     }
 
     /* Override Chrome extension fixed width */
@@ -438,25 +442,39 @@
   <script src="lib/pdf.min.js"></script>
   <script src="popup.js"></script>
   <script>
-    // ── Titlebar controls ──────────────────────────────────────
-    // Try electronAPI first, fallback to direct ipcRenderer
-    function sendCollapse() {
-      if (window.electronAPI?.closeWindow) {
-        window.electronAPI.closeWindow();
-      } else if (window.require) {
-        try {
-          const { ipcRenderer } = window.require('electron');
-          ipcRenderer.send('window-collapse');
-        } catch(e) { console.warn('IPC not available', e); }
-      }
-    }
+    // ── JS drag (replaces -webkit-app-region: drag) ───────────
+    const titlebar = document.querySelector('.titlebar');
+    let dragStartX = 0, dragStartY = 0;
+    let isDragging = false;
 
-    document.getElementById('tbClose').addEventListener('click', sendCollapse);
-    document.getElementById('tbMinimize').addEventListener('click', sendCollapse);
+    titlebar.addEventListener('mousedown', e => {
+      // Don't drag if clicking a button
+      if (e.target.classList.contains('tb-btn')) return;
+      isDragging = true;
+      dragStartX = e.screenX;
+      dragStartY = e.screenY;
+    });
 
-    // Debug: log immediately
-    console.log('electronAPI available:', !!window.electronAPI);
-    console.log('tbClose element:', document.getElementById('tbClose'));
+    document.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+      const dx = e.screenX - dragStartX;
+      const dy = e.screenY - dragStartY;
+      dragStartX = e.screenX;
+      dragStartY = e.screenY;
+      window.electronAPI?.dragWindow(dx, dy);
+    });
+
+    document.addEventListener('mouseup', () => { isDragging = false; });
+
+    // ── Titlebar button actions ────────────────────────────────
+    document.getElementById('tbClose').addEventListener('click', e => {
+      e.stopPropagation();
+      window.electronAPI?.closeWindow();
+    });
+    document.getElementById('tbMinimize').addEventListener('click', e => {
+      e.stopPropagation();
+      window.electronAPI?.closeWindow();
+    });
   </script>
 </body>
 </html>
