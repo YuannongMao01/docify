@@ -38,6 +38,7 @@ app.on('window-all-closed', () => { /* keep running in tray */ });
 
 // ─── Tray ─────────────────────────────────────────────────────
 function createTray() {
+  // Create a simple text-based tray icon using a canvas-like approach
   const iconPath = path.join(__dirname, 'assets', 'tray-icon.png');
   let icon;
   if (fs.existsSync(iconPath)) {
@@ -45,11 +46,23 @@ function createTray() {
     icon = icon.resize({ width: 18, height: 18 });
     icon.setTemplateImage(true);
   } else {
-    icon = nativeImage.createEmpty();
+    // Create a minimal 18x18 white square as fallback (visible in menu bar)
+    // Use a 1x1 white pixel scaled up
+    const size = 18;
+    const buf = Buffer.alloc(size * size * 4, 0);
+    // Draw a simple "D" shape — fill all pixels white for template image
+    for (let i = 0; i < size * size * 4; i += 4) {
+      buf[i]   = 255; // R
+      buf[i+1] = 255; // G
+      buf[i+2] = 255; // B
+      buf[i+3] = 200; // A
+    }
+    icon = nativeImage.createFromBuffer(buf, { width: size, height: size });
+    icon.setTemplateImage(true);
   }
 
   tray = new Tray(icon);
-  tray.setToolTip('Docify');
+  tray.setToolTip('Docify — right-click to quit');
 
   const menu = Menu.buildFromTemplate([
     { label: 'Show Docify',  click: () => expandWindow() },
