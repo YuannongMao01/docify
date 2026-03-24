@@ -186,16 +186,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ─── Language ─────────────────────────────────────────────────
 function initLang() {
-  // Always default to English, no persistence
   setLang('en');
-  $('langEN').addEventListener('click', () => setLang('en'));
-  $('langZH').addEventListener('click', () => setLang('zh'));
+  // Lang toggle buttons may not exist in Electron (no header)
+  const enBtn = $('langEN');
+  const zhBtn = $('langZH');
+  if (enBtn) enBtn.addEventListener('click', () => setLang('en'));
+  if (zhBtn) zhBtn.addEventListener('click', () => setLang('zh'));
 }
 
 function setLang(lang) {
   state.lang = lang;
-  $('langEN').classList.toggle('active', lang === 'en');
-  $('langZH').classList.toggle('active', lang === 'zh');
+  const enBtn = $('langEN');
+  const zhBtn = $('langZH');
+  if (enBtn) enBtn.classList.toggle('active', lang === 'en');
+  if (zhBtn) zhBtn.classList.toggle('active', lang === 'zh');
   applyI18n();
 }
 
@@ -886,25 +890,15 @@ function initMathOCR() {
 
   // ── Install service button ───────────────────────────────
   $('openInstallBtn').addEventListener('click', () => {
-    // Get the extension's install path to construct the correct command
-    const extUrl = chrome.runtime.getURL('install_service.sh');
-    // extUrl looks like: chrome-extension://[id]/install_service.sh
-    // We can't get the real filesystem path directly, but we can copy
-    // the command from the visible code element
     const cmdEl = $('installCmd');
     const cmd = cmdEl ? cmdEl.textContent : 'bash ~/Desktop/asin/doc-converter-extension/install_service.sh';
-
     navigator.clipboard.writeText(cmd).then(() => {
       const btn = $('openInstallBtn');
       const orig = btn.textContent;
       btn.textContent = state.lang === 'zh' ? '✓ 命令已复制！粘贴到终端运行' : '✓ Copied! Paste in Terminal';
       btn.style.background = 'var(--green)';
-      setTimeout(() => {
-        btn.textContent = orig;
-        btn.style.background = '';
-      }, 3000);
+      setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 3000);
     }).catch(() => {
-      // Fallback: show toast
       showToast('Command copied — paste in Terminal', 'success');
     });
   });
@@ -1218,23 +1212,8 @@ function updateInstallCommand() {
   if (!cmdEl) return;
 
   if (isWindows()) {
-    // Windows: show .bat file path
     cmdEl.textContent = 'install_service.bat';
-    // Update step 1 hint
-    const step1 = document.querySelector('[data-i18n="math_step1"]');
-    if (step1) step1.textContent = isWindows()
-      ? (state.lang === 'zh' ? '双击运行安装脚本：' : 'Double-click to run:')
-      : t('math_step1');
   } else {
-    // macOS/Linux: show bash command
     cmdEl.textContent = 'bash ~/Desktop/asin/doc-converter-extension/install_service.sh';
-  }
-
-  // Update paste hint based on OS
-  const pasteHint = document.querySelector('[data-i18n="math_paste_hint"]');
-  if (pasteHint) {
-    pasteHint.textContent = isWindows()
-      ? (state.lang === 'zh' ? '或按 Ctrl+V 粘贴截图' : 'or press Ctrl+V to paste')
-      : t('math_paste_hint');
   }
 }

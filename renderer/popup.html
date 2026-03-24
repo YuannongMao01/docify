@@ -51,16 +51,19 @@
       width: 60px; /* balance left buttons */
     }
 
-    /* Remove the original header since we have titlebar */
-    .header { display: none !important; }
-
-    /* Adjust app height */
-    html, body { min-height: 100vh; }
+    /* Override Chrome extension fixed width */
+    html, body {
+      width: 100% !important;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
     .app {
       min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
+    /* Remove the original header since we have titlebar */
+    .header { display: none !important; }
   </style>
 </head>
 <body>
