@@ -13,7 +13,6 @@
     "productName": "Docify",
     "mac": {
       "category": "public.app-category.productivity",
-      "icon": "assets/icon.icns",
       "target": [
         { "target": "dmg", "arch": ["arm64", "x64"] }
       ]
@@ -25,7 +24,6 @@
     "files": [
       "main.js",
       "preload.js",
-      "assets/**",
       "renderer/**"
     ],
     "extraResources": [
@@ -37,6 +35,6 @@
   },
   "devDependencies": {
     "electron": "^33.0.0",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^25.1.8"
   }
 }
