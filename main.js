@@ -158,30 +158,36 @@ function collapseWindow() {
 }
 
 // ─── Mouse proximity poll ─────────────────────────────────────
-// Poll mouse position every 100ms; expand when cursor is near right edge
+// Expand when mouse near right edge; collapse when mouse leaves the window
 function startMousePoll() {
   const { screen: electronScreen } = require('electron');
   pollTimer = setInterval(() => {
     if (!mainWindow) return;
     const { x, y } = electronScreen.getCursorScreenPoint();
-    const { width, height } = electronScreen.getPrimaryDisplay().workAreaSize;
+    const { width } = electronScreen.getPrimaryDisplay().workAreaSize;
     const winY = getWindowY();
 
-    const nearRightEdge = x >= width - HOVER_ZONE;
+    // Trigger zone: rightmost HOVER_ZONE pixels, vertically aligned with window
+    const nearRightEdge   = x >= width - HOVER_ZONE;
     const inVerticalRange = y >= winY && y <= winY + WINDOW_H;
 
-    if (nearRightEdge && inVerticalRange && !isExpanded) {
+    if (!isExpanded && nearRightEdge && inVerticalRange) {
       expandWindow();
-    } else if (!nearRightEdge && isExpanded) {
-      // Collapse when mouse moves away from the window area
+      return;
+    }
+
+    if (isExpanded) {
+      // Keep expanded while mouse is anywhere inside the window bounds
       const [winX] = mainWindow.getPosition();
-      const mouseInWindow = x >= winX && x <= winX + WINDOW_W &&
-                            y >= winY && y <= winY + WINDOW_H;
+      const mouseInWindow = x >= winX - 10 &&
+                            x <= winX + WINDOW_W + 10 &&
+                            y >= winY - 10 &&
+                            y <= winY + WINDOW_H + 10;
       if (!mouseInWindow) {
         collapseWindow();
       }
     }
-  }, 100);
+  }, 150);
 }
 
 // ─── IPC ──────────────────────────────────────────────────────
