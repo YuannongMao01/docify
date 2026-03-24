@@ -65,13 +65,12 @@ function createWindow() {
     height: WINDOW_H,
     x: sw - WINDOW_W - MARGIN,
     y: sh - WINDOW_H - MARGIN,
-    frame:           false,       // frameless
+    frame:           false,       // frameless — no native titlebar at all
     transparent:     false,
     resizable:       true,
     alwaysOnTop:     true,
     skipTaskbar:     true,
     backgroundColor: '#FFFFFF',
-    titleBarStyle:   'hidden',
     webPreferences: {
       preload:            path.join(__dirname, 'preload.js'),
       contextIsolation:   true,
